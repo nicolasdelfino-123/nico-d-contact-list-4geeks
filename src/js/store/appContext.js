@@ -1,48 +1,59 @@
 import React, { useState, useEffect } from "react";
 import getState from "./flux.js";
 
-// Don't change, here is where we initialize our context, by default it's just going to be null.
+// Este es el archivo donde definimos las actions
+// Aquí creamos el contexto, que se usará para compartir el estado global en la aplicación.
 export const Context = React.createContext(null);
 
-// This function injects the global store to any view/component where you want to use it, we will inject the context to layout.js, you can see it here:
-// https://github.com/4GeeksAcademy/react-hello-webapp/blob/master/src/js/layout.js#L35
-const injectContext = PassedComponent => {
-	const StoreWrapper = props => {
-		//this will be passed as the contenxt value
-		const [state, setState] = useState(
-			getState({
-				getStore: () => state.store,
-				getActions: () => state.actions,
-				setStore: updatedStore =>
-					setState({
-						store: Object.assign(state.store, updatedStore),
-						actions: { ...state.actions }
-					})
-			})
-		);
+// Este es el "Higher Order Component" (HOC) que inyecta el contexto en los componentes.
+const injectContext = (PassedComponent) => {
+  const StoreWrapper = (props) => {
+    // Este es el estado local de este componente que contiene el store y las actions
+    const [state, setState] = useState(null);
 
-		useEffect(() => {
-			/**
-			 * EDIT THIS!
-			 * This function is the equivalent to "window.onLoad", it only runs once on the entire application lifetime
-			 * you should do your ajax requests or fetch api requests here. Do not use setState() to save data in the
-			 * store, instead use actions, like this:
-			 *
-			 * state.actions.loadSomeData(); <---- calling this function from the flux.js actions
-			 *
-			 **/
-		}, []);
+    useEffect(() => {
+      // Inicializamos el estado con el getState
+      const initialState = getState({
+        getStore: () =>
+          state?.store || { contacts: [], agendas: [], currentAgenda: null },
+        getActions: () => state?.actions || {},
+        setStore: (updatedStore) => {
+          setState((prevState) => ({
+            ...prevState,
+            store: {
+              ...prevState.store,
+              ...updatedStore,
+            },
+          }));
+        },
+      });
 
-		// The initial value for the context is not null anymore, but the current state of this component,
-		// the context will now have a getStore, getActions and setStore functions available, because they were declared
-		// on the state of this component
-		return (
-			<Context.Provider value={state}>
-				<PassedComponent {...props} />
-			</Context.Provider>
-		);
-	};
-	return StoreWrapper;
+      setState(initialState);
+    }, []);
+
+    useEffect(() => {
+      // Este efecto se ejecuta una vez que el estado se ha inicializado
+      if (state) {
+        // Aquí puedes hacer peticiones API si es necesario
+        state.actions.getAgendas();
+      }
+    }, [state]);
+
+    // Proveemos el contexto a los componentes envueltos
+    return (
+      <>
+        {state ? (
+          <Context.Provider value={state}>
+            <PassedComponent {...props} />
+          </Context.Provider>
+        ) : (
+          <div>Loading...</div>
+        )}
+      </>
+    );
+  };
+
+  return StoreWrapper;
 };
 
 export default injectContext;
