@@ -1,13 +1,14 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Context } from "../store/appContext";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 export const AddContact = () => {
-  const { actions } = useContext(Context); // Acceder a las acciones
+  const { actions, store } = useContext(Context); // Acceder a las acciones y al store
   const navigate = useNavigate(); // Hook para navegar programáticamente
+  const { contactId } = useParams(); // Obtener el parámetro contactId de la URL
 
   const [contact, setContact] = useState({
-    full_name: "",
+    name: "",
     email: "",
     phone: "",
     address: "",
@@ -15,6 +16,48 @@ export const AddContact = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Cargar datos del contacto si estamos en modo edición
+  useEffect(() => {
+    const loadContactDetails = async () => {
+      if (contactId) {
+        try {
+          // Si existe store.contacts, buscar el contacto en el store
+          if (store.contacts) {
+            const existingContact = store.contacts.find(
+              (c) => c.id === parseInt(contactId)
+            );
+            if (existingContact) {
+              setContact({
+                name: existingContact.full_name || existingContact.name || "",
+                email: existingContact.email || "",
+                phone: existingContact.phone || "",
+                address: existingContact.address || "",
+              });
+            }
+          } else {
+            // Si no están los contactos en el store, hacer una petición al backend
+            const contactData = await actions.getContact(parseInt(contactId));
+            if (contactData) {
+              setContact({
+                name: contactData.full_name || contactData.name || "",
+                email: contactData.email || "",
+                phone: contactData.phone || "",
+                address: contactData.address || "",
+              });
+            }
+          }
+        } catch (err) {
+          setError(
+            "Error al cargar los datos del contacto: " +
+              (err.message || "Error desconocido")
+          );
+        }
+      }
+    };
+
+    loadContactDetails();
+  }, [contactId]);
 
   // Función para manejar los cambios en los inputs
   const handleChange = (e) => {
@@ -33,17 +76,26 @@ export const AddContact = () => {
     setError(null);
 
     try {
-      // Llamamos a la acción para agregar el contacto
-      const result = await actions.addContact(contact);
-
-      if (result) {
-        // Redirigir a la lista de contactos
-        navigate("/");
+      if (contactId) {
+        // Modo edición
+        console.log("Actualizando contacto:", contact);
+        await actions.updateContact(parseInt(contactId), contact);
       } else {
-        setError("No se pudo agregar el contacto. Inténtelo de nuevo.");
+        // Modo creación
+        console.log("Enviando contacto:", contact);
+        await actions.addContact(contact);
       }
+
+      // Redirigir a la vista principal de contactos
+      navigate("/"); // Esta ruta debe mostrar el componente Contact
     } catch (err) {
-      setError("Ocurrió un error al agregar el contacto: " + err.message);
+      console.error("Error completo:", err);
+      setError(
+        "Ocurrió un error al " +
+          (contactId ? "actualizar" : "agregar") +
+          " el contacto: " +
+          (err.message || "Error desconocido")
+      );
     } finally {
       setLoading(false);
     }
@@ -51,7 +103,9 @@ export const AddContact = () => {
 
   return (
     <div className="container">
-      <h2 className="my-3">Add a New Contact</h2>
+      <h2 className="my-3">
+        {contactId ? "Edit Contact" : "Add a New Contact"}
+      </h2>
 
       {error && (
         <div className="alert alert-danger" role="alert">
@@ -61,15 +115,15 @@ export const AddContact = () => {
 
       <form onSubmit={handleSubmit} autoComplete="off">
         <div className="mb-3">
-          <label htmlFor="full_name" className="form-label">
-            Name
+          <label htmlFor="name" className="form-label">
+            Full Name
           </label>
           <input
             type="text"
             className="form-control"
-            id="full_name"
-            name="full_name"
-            value={contact.full_name}
+            id="name"
+            name="name"
+            value={contact.name}
             onChange={handleChange}
             required
           />

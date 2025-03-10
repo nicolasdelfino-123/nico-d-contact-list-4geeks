@@ -1,57 +1,58 @@
 import React, { useState, useEffect } from "react";
 import getState from "./flux.js";
 
-// Aquí creamos el contexto, que se usará para compartir el estado global en la aplicación.
+// Crear el contexto
 export const Context = React.createContext(null);
 
-// Este es el "Higher Order Component" (HOC) que inyecta el contexto en los componentes.
+// Componente proveedor del contexto
 const injectContext = (PassedComponent) => {
   const StoreWrapper = (props) => {
-    // Este es el estado local de este componente que contiene el store y las actions
-    const [state, setState] = useState(null);
+    // Estado que contendrá el contexto global
+    const [state, setState] = useState(
+      getState({
+        getStore: () => state.store,
+        getActions: () => state.actions,
+        setStore: (updatedStore) =>
+          setState({
+            ...state,
+            store: Object.assign(state.store, updatedStore),
+          }),
+      })
+    );
 
+    // Efecto para inicializar datos al cargar la aplicación
     useEffect(() => {
-      // Inicializamos el estado con el getState
-      const initialState = getState({
-        getStore: () => state?.store || { contacts: [] },
-        getActions: () => state?.actions || {},
-        setStore: (updatedStore) => {
-          setState((prevState) => ({
-            ...prevState,
-            store: {
-              ...prevState.store,
-              ...updatedStore,
-            },
-          }));
-        },
-      });
+      // Aquí verificamos y creamos la agenda si no existe
+      const initializeAgenda = async () => {
+        try {
+          const { slug } = state.store;
+          console.log("Inicializando con slug:", slug);
 
-      setState(initialState);
+          // Verifica si la agenda existe
+          const agenda = await state.actions.getAgenda(slug);
+
+          if (!agenda) {
+            // Si no existe, la creamos
+            console.log("Agenda no encontrada, creando agenda:", slug);
+            await state.actions.createAgenda(slug);
+          } else {
+            console.log("Agenda encontrada:", slug);
+          }
+
+          // Obtenemos los contactos iniciales
+          await state.actions.getContacts();
+        } catch (error) {
+          console.error("Error al inicializar la agenda:", error);
+        }
+      };
+
+      initializeAgenda();
     }, []);
 
-    useEffect(() => {
-      // Este efecto se ejecuta una vez que el estado se ha inicializado
-      if (state) {
-        // Cargamos los contactos al iniciar
-        state.actions.getContacts();
-      }
-    }, [state]);
-
-    // Proveemos el contexto a los componentes envueltos
     return (
-      <>
-        {state ? (
-          <Context.Provider value={state}>
-            <PassedComponent {...props} />
-          </Context.Provider>
-        ) : (
-          <div className="d-flex justify-content-center mt-5">
-            <div className="spinner-border" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        )}
-      </>
+      <Context.Provider value={state}>
+        <PassedComponent {...props} />
+      </Context.Provider>
     );
   };
 
