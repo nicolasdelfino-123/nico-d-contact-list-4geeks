@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import getState from "./flux.js";
 
-// Este es el archivo donde definimos las actions
 // Aquí creamos el contexto, que se usará para compartir el estado global en la aplicación.
 export const Context = React.createContext(null);
 
@@ -14,8 +13,7 @@ const injectContext = (PassedComponent) => {
     useEffect(() => {
       // Inicializamos el estado con el getState
       const initialState = getState({
-        getStore: () =>
-          state?.store || { contacts: [], agendas: [], currentAgenda: null },
+        getStore: () => state?.store || { contacts: [] },
         getActions: () => state?.actions || {},
         setStore: (updatedStore) => {
           setState((prevState) => ({
@@ -34,8 +32,8 @@ const injectContext = (PassedComponent) => {
     useEffect(() => {
       // Este efecto se ejecuta una vez que el estado se ha inicializado
       if (state) {
-        // Aquí puedes hacer peticiones API si es necesario
-        state.actions.getAgendas();
+        // Cargamos los contactos al iniciar
+        state.actions.getContacts();
       }
     }, [state]);
 
@@ -47,7 +45,11 @@ const injectContext = (PassedComponent) => {
             <PassedComponent {...props} />
           </Context.Provider>
         ) : (
-          <div>Loading...</div>
+          <div className="d-flex justify-content-center mt-5">
+            <div className="spinner-border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
         )}
       </>
     );

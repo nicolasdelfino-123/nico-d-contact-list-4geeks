@@ -2,15 +2,13 @@ const getState = ({ getStore, getActions, setStore }) => {
   return {
     store: {
       contacts: [], // Aquí se almacenan los contactos
-      agendas: [], // Aquí se almacenan las agendas
-      currentAgenda: null, // Para almacenar la agenda actualmente seleccionada
     },
     actions: {
-      // Obtener todos los contactos de una agenda
-      getContacts: async (slug) => {
+      // Obtener todos los contactos
+      getContacts: async () => {
         try {
           const response = await fetch(
-            `https://playground.4geeks.com/contact/agendas/${slug}/contacts`
+            "https://playground.4geeks.com/contact/agendas/roberto_agenda/contacts"
           );
           if (!response.ok) {
             throw new Error("Error al obtener los contactos");
@@ -24,53 +22,11 @@ const getState = ({ getStore, getActions, setStore }) => {
         }
       },
 
-      // Obtener todas las agendas
-      getAgendas: async () => {
-        try {
-          const response = await fetch(
-            "https://playground.4geeks.com/contact/agendas"
-          );
-          if (!response.ok) {
-            throw new Error("Error al obtener las agendas");
-          }
-          const data = await response.json();
-          setStore({ agendas: data.agendas }); // Guardamos las agendas correctamente
-
-          // Si hay agendas, establecemos la primera como la actual
-          if (data.agendas && data.agendas.length > 0) {
-            setStore({ currentAgenda: data.agendas[0] });
-            // Cargamos los contactos de la primera agenda
-            getActions().getContacts(data.agendas[0].slug);
-          }
-
-          return data.agendas;
-        } catch (error) {
-          console.error("Error:", error);
-          return [];
-        }
-      },
-
-      // Establecer la agenda actual
-      setCurrentAgenda: (agenda) => {
-        setStore({ currentAgenda: agenda });
-        if (agenda) {
-          getActions().getContacts(agenda.slug);
-        }
-      },
-
-      // Agregar un nuevo contacto a una agenda
+      // Agregar un nuevo contacto
       addContact: async (contact) => {
-        const store = getStore();
-        const currentAgenda = store.currentAgenda;
-
-        if (!currentAgenda) {
-          console.error("No hay una agenda seleccionada");
-          return null;
-        }
-
         try {
           const response = await fetch(
-            `https://playground.4geeks.com/contact/agendas/${currentAgenda.slug}/contacts`,
+            "https://playground.4geeks.com/contact/agendas/roberto_agenda/contacts",
             {
               method: "POST",
               headers: {
@@ -85,6 +41,7 @@ const getState = ({ getStore, getActions, setStore }) => {
           }
 
           const newContact = await response.json();
+          const store = getStore();
           const updatedContacts = [...store.contacts, newContact];
           setStore({
             contacts: updatedContacts,
@@ -99,17 +56,9 @@ const getState = ({ getStore, getActions, setStore }) => {
 
       // Actualizar un contacto (PUT)
       updateContact: async (contactId, updatedContact) => {
-        const store = getStore();
-        const currentAgenda = store.currentAgenda;
-
-        if (!currentAgenda) {
-          console.error("No hay una agenda seleccionada");
-          return null;
-        }
-
         try {
           const response = await fetch(
-            `https://playground.4geeks.com/contact/agendas/${currentAgenda.slug}/contacts/${contactId}`,
+            `https://playground.4geeks.com/contact/agendas/roberto_agenda/contacts/${contactId}`,
             {
               method: "PUT",
               headers: {
@@ -124,6 +73,7 @@ const getState = ({ getStore, getActions, setStore }) => {
           }
 
           const updatedData = await response.json();
+          const store = getStore();
           const updatedContacts = store.contacts.map((contact) =>
             contact.id === contactId ? updatedData : contact
           );
@@ -138,17 +88,9 @@ const getState = ({ getStore, getActions, setStore }) => {
 
       // Eliminar un contacto
       deleteContact: async (contactId) => {
-        const store = getStore();
-        const currentAgenda = store.currentAgenda;
-
-        if (!currentAgenda) {
-          console.error("No hay una agenda seleccionada");
-          return false;
-        }
-
         try {
           const response = await fetch(
-            `https://playground.4geeks.com/contact/agendas/${currentAgenda.slug}/contacts/${contactId}`,
+            `https://playground.4geeks.com/contact/agendas/roberto_agenda/contacts/${contactId}`,
             {
               method: "DELETE",
             }
@@ -158,6 +100,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             throw new Error("Error al eliminar el contacto");
           }
 
+          const store = getStore();
           const updatedContacts = store.contacts.filter(
             (contact) => contact.id !== contactId
           );
@@ -168,45 +111,6 @@ const getState = ({ getStore, getActions, setStore }) => {
           console.error("Error:", error);
           return false;
         }
-      },
-
-      // Agregar una nueva agenda
-      addAgenda: async (agenda) => {
-        try {
-          const response = await fetch(
-            "https://playground.4geeks.com/contact/agendas",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(agenda),
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error("Error al agregar la agenda");
-          }
-
-          const newAgenda = await response.json();
-          const store = getStore();
-          const updatedAgendas = [...store.agendas, newAgenda];
-          setStore({
-            agendas: updatedAgendas,
-            currentAgenda: newAgenda, // Establecemos la nueva agenda como la actual
-          });
-
-          return newAgenda;
-        } catch (error) {
-          console.error("Error:", error);
-          return null;
-        }
-      },
-
-      // Función para obtener una agenda por su slug
-      getAgendaBySlug: (slug) => {
-        const store = getStore();
-        return store.agendas.find((agenda) => agenda.slug === slug);
       },
     },
   };
