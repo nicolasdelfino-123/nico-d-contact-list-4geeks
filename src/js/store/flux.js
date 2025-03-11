@@ -101,11 +101,88 @@ const getState = ({ getStore, getActions, setStore }) => {
             throw new Error("Error al obtener los contactos");
           }
           const contacts = await response.json();
+
+          // Guardar contactos en localStorage
+          localStorage.setItem("contacts", JSON.stringify(contacts));
+
           setStore({ ...store, contacts });
           return contacts;
         } catch (error) {
           console.error("Error:", error);
+
+          // Si hay un error de red, intentamos recuperar los contactos de localStorage
+          const storedContacts = localStorage.getItem("contacts");
+          if (storedContacts) {
+            try {
+              const parsedContacts = JSON.parse(storedContacts);
+              console.log(
+                "Recuperando contactos desde localStorage:",
+                parsedContacts
+              );
+              setStore({ ...getStore(), contacts: parsedContacts });
+              return parsedContacts;
+            } catch (storageError) {
+              console.error(
+                "Error al recuperar contactos desde localStorage:",
+                storageError
+              );
+            }
+          }
+
           return [];
+        }
+      },
+
+      // Obtener un contacto por ID
+      getContactById: async (contactId) => {
+        try {
+          const store = getStore();
+          const slug = store.slug;
+
+          console.log(
+            `Obteniendo contacto con ID: ${contactId} para slug: ${slug}`
+          );
+
+          const response = await fetch(
+            `https://playground.4geeks.com/contact/agendas/${slug}/contacts/${contactId}`
+          );
+
+          if (!response.ok) {
+            throw new Error("Error al obtener el contacto");
+          }
+
+          const contact = await response.json();
+          console.log("Contacto obtenido:", contact);
+
+          return contact;
+        } catch (error) {
+          console.error("Error:", error);
+
+          // Si no hay conexión, intentamos encontrar el contacto en localStorage
+          const storedContacts = localStorage.getItem("contacts");
+
+          if (storedContacts) {
+            try {
+              const parsedContacts = JSON.parse(storedContacts);
+              const contactArray = Array.isArray(parsedContacts)
+                ? parsedContacts
+                : [];
+              const foundContact = contactArray.find(
+                (c) => c.id.toString() === contactId.toString()
+              );
+
+              if (foundContact) {
+                return foundContact;
+              }
+            } catch (storageError) {
+              console.error(
+                "Error al buscar contacto en localStorage:",
+                storageError
+              );
+            }
+          }
+
+          throw error; // Relanzamos el error si no encontramos el contacto
         }
       },
 
@@ -165,10 +242,14 @@ const getState = ({ getStore, getActions, setStore }) => {
             : [];
 
           // Actualiza el store con el nuevo contacto
+          const updatedContacts = [...currentContacts, data];
           setStore({
             ...store,
-            contacts: [...currentContacts, data],
+            contacts: updatedContacts,
           });
+
+          // Actualizar localStorage
+          localStorage.setItem("contacts", JSON.stringify(updatedContacts));
 
           return data;
         } catch (error) {
@@ -176,6 +257,7 @@ const getState = ({ getStore, getActions, setStore }) => {
           throw error; // Re-lanzamos el error para que se pueda manejar en el componente
         }
       },
+
       // Actualizar un contacto (PUT)
       updateContact: async (contactId, updatedContact) => {
         try {
@@ -202,6 +284,9 @@ const getState = ({ getStore, getActions, setStore }) => {
             contact.id === contactId ? updatedData : contact
           );
           setStore({ ...store, contacts: updatedContacts });
+
+          // Actualizar localStorage
+          localStorage.setItem("contacts", JSON.stringify(updatedContacts));
 
           return updatedData;
         } catch (error) {
@@ -232,10 +317,92 @@ const getState = ({ getStore, getActions, setStore }) => {
           );
           setStore({ ...store, contacts: updatedContacts });
 
+          // Actualizar localStorage
+          localStorage.setItem("contacts", JSON.stringify(updatedContacts));
+
           return true;
         } catch (error) {
           console.error("Error:", error);
           throw error;
+        }
+      },
+      // Cargar contactos desde localStorage al iniciar la aplicación
+      loadContactsFromStorage: () => {
+        const store = getStore();
+        const storedContacts = localStorage.getItem("contacts");
+
+        if (storedContacts) {
+          try {
+            const parsedContacts = JSON.parse(storedContacts);
+            // Asegúrate de que parsedContacts.contacts sea un array
+            const contactsArray = Array.isArray(parsedContacts.contacts)
+              ? parsedContacts.contacts
+              : [];
+            setStore({ ...store, contacts: contactsArray });
+            console.log(
+              "Contactos cargados desde localStorage:",
+              contactsArray
+            );
+          } catch (error) {
+            console.error(
+              "Error al cargar contactos desde localStorage:",
+              error
+            );
+          }
+        }
+      },
+
+      // Obtener todos los contactos
+      getContacts: async () => {
+        try {
+          const store = getStore();
+          const slug = store.slug;
+
+          console.log("Obteniendo contactos para slug:", slug);
+
+          const response = await fetch(
+            `https://playground.4geeks.com/contact/agendas/${slug}/contacts`
+          );
+          if (!response.ok) {
+            throw new Error("Error al obtener los contactos");
+          }
+          const data = await response.json();
+
+          // Asegúrate de que data.contacts sea un array
+          const contactsArray = Array.isArray(data.contacts)
+            ? data.contacts
+            : [];
+
+          // Actualizar el store y localStorage con los contactos obtenidos
+          setStore({ ...store, contacts: contactsArray });
+          localStorage.setItem(
+            "contacts",
+            JSON.stringify({ contacts: contactsArray })
+          );
+
+          return contactsArray;
+        } catch (error) {
+          console.error("Error:", error);
+
+          // Si no hay conexión, cargar contactos desde localStorage
+          const storedContacts = localStorage.getItem("contacts");
+          if (storedContacts) {
+            try {
+              const parsedContacts = JSON.parse(storedContacts);
+              const contactsArray = Array.isArray(parsedContacts.contacts)
+                ? parsedContacts.contacts
+                : [];
+              setStore({ ...store, contacts: contactsArray });
+              return contactsArray;
+            } catch (parseError) {
+              console.error(
+                "Error al parsear contactos desde localStorage:",
+                parseError
+              );
+            }
+          }
+
+          return [];
         }
       },
     },

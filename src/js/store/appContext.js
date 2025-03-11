@@ -39,7 +39,31 @@ const injectContext = (PassedComponent) => {
             console.log("Agenda encontrada:", slug);
           }
 
-          // Obtenemos los contactos iniciales
+          // Intentamos cargar contactos desde localStorage primero
+          const storedContacts = localStorage.getItem("contacts");
+          if (storedContacts) {
+            try {
+              const parsedContacts = JSON.parse(storedContacts);
+              console.log(
+                "Contactos cargados desde localStorage:",
+                parsedContacts
+              );
+              setState({
+                ...state,
+                store: {
+                  ...state.store,
+                  contacts: parsedContacts,
+                },
+              });
+            } catch (storageError) {
+              console.error(
+                "Error al cargar contactos desde localStorage:",
+                storageError
+              );
+            }
+          }
+
+          // Obtenemos los contactos iniciales de la API
           await state.actions.getContacts();
         } catch (error) {
           console.error("Error al inicializar la agenda:", error);

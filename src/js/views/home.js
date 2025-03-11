@@ -5,14 +5,18 @@ import ContactCard from "../component/ContactCard.jsx";
 export const Home = () => {
   const { store, actions } = useContext(Context);
 
-  // Este useEffect se ejecutará cuando los contactos cambien
+  // Cargar contactos al montar el componente
   useEffect(() => {
-    // Aquí puedes agregar lógica para ejecutar una acción si es necesario,
-    // por ejemplo, obtener los contactos nuevamente.
-    if (store.contacts.length === 0) {
-      actions.getContacts(); // Obtén los contactos si el estado está vacío
-    }
-  }, [store.contacts, actions]); // Esto asegura que se ejecute cuando los contactos cambien
+    const loadContacts = async () => {
+      try {
+        await actions.getContacts(); // Obtener los contactos
+      } catch (error) {
+        console.error("Error al cargar contactos:", error);
+      }
+    };
+
+    loadContacts(); // Llamar a la función para cargar contactos
+  }, []); // Solo se ejecuta al montar el componente
 
   return (
     <div className="text-center mt-5">
@@ -21,9 +25,9 @@ export const Home = () => {
         <div className="contact-list">
           {store.contacts.map((contact) => (
             <ContactCard
-              key={contact.id} // Asegúrate de tener un 'id' único para cada contacto
+              key={contact.id}
               contact={contact}
-              onDelete={() => actions.deleteContact(contact.id)} // Llama a la acción para eliminar el contacto
+              onDelete={() => actions.deleteContact(contact.id)}
             />
           ))}
         </div>
@@ -33,3 +37,5 @@ export const Home = () => {
     </div>
   );
 };
+
+export default Home;

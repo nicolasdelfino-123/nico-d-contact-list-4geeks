@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 
 export const Contact = () => {
   const { store, actions } = useContext(Context); // Acceder al store y las acciones
-  const { contacts } = store;
+  const { contacts } = store; // Acceder a los contactos directamente
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
